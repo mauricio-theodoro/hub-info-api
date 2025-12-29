@@ -60,6 +60,13 @@
 			<artifactId>flyway-core</artifactId>
 		</dependency>
 
+		<!-- Flyway: suporte específico para MySQL (necessário no Flyway moderno) -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
 		<!-- MySQL Driver -->
 		<dependency>
 			<groupId>com.mysql</groupId>

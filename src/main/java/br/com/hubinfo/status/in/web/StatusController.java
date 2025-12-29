@@ -1,4 +1,4 @@
-package status.adapter.in.web;
+package br.com.hubinfo.status.in.web;
 
 import java.time.Instant;
 import java.util.Map;
@@ -24,7 +24,7 @@ public class StatusController {
     public Map<String, Object> status() {
         return Map.of(
                 "service", "hub-info-api",
-                "status", "UP",
+                "br/com/hubinfo/status", "UP",
                 "timestamp", Instant.now().toString()
         );
     }

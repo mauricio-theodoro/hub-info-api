@@ -95,6 +95,53 @@ public final class User {
                 createdAt
         );
     }
+    /**
+     * Re-hidrata um usuário existente (vindo do banco).
+     *
+     * Importante:
+     * - NÃO revalida regra de maioridade aqui, pois essa regra é de criação (createNew).
+     * - Mantém apenas invariantes estruturais: campos obrigatórios e roles não vazias.
+     */
+    public static User rehydrate(
+            UUID id,
+            String firstName,
+            String lastName,
+            EmailAddress email,
+            String passwordHash,
+            LocalDate birthDate,
+            Set<Role> roles,
+            Instant createdAt
+    ) {
+        if (id == null) {
+            throw new UserDomainException("Id do usuário é obrigatório.");
+        }
+        validateNames(firstName, lastName);
+        validatePasswordHash(passwordHash);
+
+        if (birthDate == null) {
+            throw new UserDomainException("Data de nascimento é obrigatória.");
+        }
+        if (roles == null || roles.isEmpty()) {
+            throw new UserDomainException("Usuário deve possuir ao menos um perfil (USER/ADMIN).");
+        }
+        if (createdAt == null) {
+            throw new UserDomainException("CreatedAt é obrigatório.");
+        }
+
+        Set<Role> safeRoles = Collections.unmodifiableSet(Set.copyOf(roles));
+
+        return new User(
+                id,
+                firstName.trim(),
+                lastName.trim(),
+                email,
+                passwordHash,
+                birthDate,
+                safeRoles,
+                createdAt
+        );
+    }
+
 
     private static void validateNames(String firstName, String lastName) {
         if (firstName == null || firstName.trim().isBlank()) {

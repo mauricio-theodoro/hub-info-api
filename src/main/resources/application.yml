@@ -24,6 +24,8 @@ spring:
 
   flyway:
     enabled: true
+    connect-retries: 30
+    connect-retries-interval: 5s
 
 management:
   endpoints:

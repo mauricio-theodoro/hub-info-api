@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * Observação de arquitetura:
  * - A API seguirá Clean Architecture por feature, separando camadas (domain/usecase/adapters).
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "br.com.hubinfo")
 public class HubInfoApiApplication {
 
 	public static void main(String[] args) {

@@ -1,0 +1,2 @@
+-- - Mantemos Flyway ativo desde o início para garantir controle do schema via migrations.
+-- - As tabelas serão criadas nos próximos commits (User/Audit/etc).

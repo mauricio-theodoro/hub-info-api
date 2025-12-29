@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: hub-info-api
+
+  # Forçamos o app a rodar como Servlet (MVC), mesmo tendo WebFlux para WebClient.
+  main:
+    web-application-type: servlet
+
+  datasource:
+    url: ${HUBINFO_DB_URL:jdbc:mysql://localhost:3306/hubinfo?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Sao_Paulo}
+    username: ${HUBINFO_DB_USER:hubinfo}
+    password: ${HUBINFO_DB_PASS:hubinfo}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

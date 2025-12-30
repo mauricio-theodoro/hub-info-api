@@ -27,6 +27,12 @@ spring:
     enabled: true
     connect-retries: 30
     connect-retries-interval: 5s
+    placeholders:
+      hubinfo_bootstrap_admin_first_name: ${HUBINFO_BOOTSTRAP_ADMIN_FIRST_NAME:Admin}
+      hubinfo_bootstrap_admin_last_name: ${HUBINFO_BOOTSTRAP_ADMIN_LAST_NAME:HubInfo}
+      hubinfo_bootstrap_admin_email: ${HUBINFO_BOOTSTRAP_ADMIN_EMAIL:admin@hubinfo.local}
+      hubinfo_bootstrap_admin_birth_date: ${HUBINFO_BOOTSTRAP_ADMIN_BIRTH_DATE:1990-01-01}
+      hubinfo_bootstrap_admin_password_hash: ${HUBINFO_BOOTSTRAP_ADMIN_PASSWORD_HASH:}
 
 
 management:
@@ -46,10 +52,15 @@ springdoc:
 
 hubinfo:
   security:
-    admin:
-      username: admin@hubinfo.local
-      password: Admin@123
     jwt:
-      issuer: hub-info
-      secret: ${HUBINFO_JWT_SECRET:CHANGE-ME-VERY-LONG-SECRET-AT-LEAST-64-CHARS-1234567890}
-      access-token-minutes: 60
+      secret: ${HUBINFO_JWT_SECRET:dev-secret-change-me-min-32-chars}
+      issuer: hub-info-api
+      access-token-minutes: ${HUBINFO_JWT_ACCESS_TOKEN_MINUTES:60}
+  bootstrap:
+    admin:
+      enabled: ${HUBINFO_BOOTSTRAP_ADMIN_ENABLED:true}
+      password-hash: ${HUBINFO_BOOTSTRAP_ADMIN_PASSWORD_HASH:}
+      email: ${HUBINFO_BOOTSTRAP_ADMIN_EMAIL:admin@hubinfo.local}
+      first-name: ${HUBINFO_BOOTSTRAP_ADMIN_FIRST_NAME:Admin}
+      last-name: ${HUBINFO_BOOTSTRAP_ADMIN_LAST_NAME:HubInfo}
+      birth-date: ${HUBINFO_BOOTSTRAP_ADMIN_BIRTH_DATE:1990-01-01}

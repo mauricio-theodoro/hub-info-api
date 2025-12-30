@@ -1,5 +1,6 @@
 package br.com.hubinfo.security.jwt;
 
+import br.com.hubinfo.security.HubInfoPrincipal;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -13,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -38,7 +40,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             Claims claims = jwtService.parse(token);
 
+            // O subject do JWT foi emitido como o userId (UUID.toString())
+            UUID userId = UUID.fromString(claims.getSubject());
             String email = claims.get("email", String.class);
+
             @SuppressWarnings("unchecked")
             Set<String> roles = Set.copyOf((Collection<String>) claims.get("roles"));
 
@@ -46,7 +51,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
                     .collect(Collectors.toSet());
 
-            var auth = new UsernamePasswordAuthenticationToken(email, null, authorities);
+            // Principal corporativo com ID e e-mail
+            HubInfoPrincipal principal = new HubInfoPrincipal(userId, email);
+
+            var auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (Exception ex) {

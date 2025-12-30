@@ -49,3 +49,7 @@ hubinfo:
     admin:
       username: admin@hubinfo.local
       password: Admin@123
+    jwt:
+      issuer: hub-info
+      secret: ${HUBINFO_JWT_SECRET:CHANGE-ME-VERY-LONG-SECRET-AT-LEAST-64-CHARS-1234567890}
+      access-token-minutes: 60

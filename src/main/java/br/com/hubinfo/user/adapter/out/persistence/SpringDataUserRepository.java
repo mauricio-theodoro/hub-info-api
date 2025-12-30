@@ -12,6 +12,7 @@ import java.util.UUID;
  * - Este repositório trabalha com UserJpaEntity.
  * - O domínio e o caso de uso continuam falando com UserRepositoryPort.
  */
+
 public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, UUID> {
 
     boolean existsByEmail(String email);

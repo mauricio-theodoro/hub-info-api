@@ -4,7 +4,6 @@ server:
 spring:
   application:
     name: hub-info-api
-
   # Forçamos o app a rodar como Servlet (MVC), mesmo tendo WebFlux para WebClient.
   main:
     web-application-type: servlet
@@ -21,11 +20,14 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        type:
+          preferred_uuid_jdbc_type: CHAR
 
   flyway:
     enabled: true
     connect-retries: 30
     connect-retries-interval: 5s
+
 
 management:
   endpoints:
@@ -41,3 +43,9 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+hubinfo:
+  security:
+    admin:
+      username: admin@hubinfo.local
+      password: Admin@123

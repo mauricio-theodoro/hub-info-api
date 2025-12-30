@@ -53,7 +53,7 @@ public class CreateUserService implements CreateUserUseCase {
             EmailAddress email = EmailAddress.of(command.email());
 
             if (userRepository.existsByEmail(email)) {
-                throw new UserUseCaseException("Já existe um usuário cadastrado com este e-mail.");
+                throw new EmailAlreadyExistsException("Já existe um usuário cadastrado com este e-mail.");
             }
 
             validatePassword(command.password(), command.passwordConfirmation());

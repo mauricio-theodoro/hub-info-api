@@ -1,4 +1,4 @@
-package br.com.hubinfo.hub_info_api;
+package br.com.hubinfo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,9 +12,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * Observação de arquitetura:
  * - A API seguirá Clean Architecture por feature, separando camadas (domain/usecase/adapters).
  */
-@SpringBootApplication(scanBasePackages = "br.com.hubinfo")
+@SpringBootApplication
 public class HubInfoApiApplication {
-
 	public static void main(String[] args) {
 		SpringApplication.run(HubInfoApiApplication.class, args);
 	}

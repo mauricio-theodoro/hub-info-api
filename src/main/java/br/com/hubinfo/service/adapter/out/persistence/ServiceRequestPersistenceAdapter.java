@@ -4,8 +4,10 @@ import br.com.hubinfo.service.domain.ServiceRequest;
 import br.com.hubinfo.service.domain.ServiceRequestStatus;
 import br.com.hubinfo.service.domain.ServiceType;
 import br.com.hubinfo.service.usecase.port.ServiceRequestRepositoryPort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +30,22 @@ public class ServiceRequestPersistenceAdapter implements ServiceRequestRepositor
     @Override
     public Optional<ServiceRequest> findById(UUID id) {
         return repository.findById(id).map(ServiceRequestPersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public List<ServiceRequest> findLatest(UUID requestedByUserIdOrNull,
+                                           ServiceType serviceTypeOrNull,
+                                           ServiceRequestStatus statusOrNull,
+                                           int limit) {
+
+        var page = repository.findLatest(
+                requestedByUserIdOrNull,
+                serviceTypeOrNull == null ? null : serviceTypeOrNull.name(),
+                statusOrNull == null ? null : statusOrNull.name(),
+                PageRequest.of(0, limit)
+        );
+
+        return page.getContent().stream().map(ServiceRequestPersistenceAdapter::toDomain).toList();
     }
 
     private static ServiceRequestJpaEntity toJpa(ServiceRequest d) {

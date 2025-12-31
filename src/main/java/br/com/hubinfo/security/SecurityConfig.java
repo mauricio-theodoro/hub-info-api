@@ -2,15 +2,19 @@ package br.com.hubinfo.security;
 
 import br.com.hubinfo.security.jwt.JwtAuthenticationFilter;
 import br.com.hubinfo.security.jwt.JwtService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -19,12 +23,29 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService) throws Exception {
         return http
-                // ESSENCIAL para POST em API stateless (senão dá 403)
-                .csrf(csrf -> csrf.disable())
+                // API stateless: CSRF não se aplica a Postman/REST
+                .csrf(AbstractHttpConfigurer::disable)
 
+                // Desliga mecanismos de login padrão (evita comportamento “web app”)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+
+                // Sem sessão: toda request se autentica via JWT
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+                // Padroniza respostas:
+                // - 401 quando não autenticado
+                // - 403 quando autenticado mas sem permissão
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                        .accessDeniedHandler((req, res, e) ->
+                                res.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden"))
+                )
+
                 .authorizeHttpRequests(auth -> auth
+                        // MUITO IMPORTANTE: libera /error (Spring usa em falhas)
+                        .requestMatchers("/error").permitAll()
+
                         .requestMatchers("/api/v1/status").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()

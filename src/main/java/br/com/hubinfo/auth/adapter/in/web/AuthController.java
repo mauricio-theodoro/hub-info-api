@@ -90,20 +90,15 @@ public class AuthController {
      *   sem ir ao banco.
      */
     @GetMapping("/me")
-    public MeResponse me(@AuthenticationPrincipal HubInfoPrincipal principal,
-                         Authentication authentication) {
+    public MeResponse me(@AuthenticationPrincipal HubInfoPrincipal principal) {
+        var user = userRepository.findByEmail(principal.email()).orElseThrow();
 
-        // principal.userId() e principal.email() vêm do JWT (subject e claim "email").
-        UUID userId = principal.userId();
-        String email = principal.email();
+        Set<String> roles = Arrays.stream(user.getRolesCsv().split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toSet());
 
-        // As roles vêm das authorities (ROLE_ADMIN, ROLE_USER, etc.)
-        Set<String> roles = authentication.getAuthorities().stream()
-                .map(a -> a.getAuthority())             // ex.: "ROLE_ADMIN"
-                .map(a -> a.replace("ROLE_", ""))       // vira "ADMIN"
-                .collect(Collectors.toUnmodifiableSet());
-
-        return new MeResponse(userId, email, roles);
+        return new MeResponse(user.getId(), user.getEmail(), roles);
     }
 
     /**

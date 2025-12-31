@@ -40,8 +40,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             Claims claims = jwtService.parse(token);
 
-            // O subject do JWT foi emitido como o userId (UUID.toString())
+            // SUBJECT: deve ser o UUID do usuário (string)
             UUID userId = UUID.fromString(claims.getSubject());
+
+            // Claim extra: email
             String email = claims.get("email", String.class);
 
             @SuppressWarnings("unchecked")
@@ -51,14 +53,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
                     .collect(Collectors.toSet());
 
-            // Principal corporativo com ID e e-mail
-            HubInfoPrincipal principal = new HubInfoPrincipal(userId, email);
+            // Principal tipado do HUB Info (resolve seu 500 no controller)
+            var principal = new HubInfoPrincipal(userId, email);
 
             var auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (Exception ex) {
-            // Token inválido: não autentica, segue como anônimo
             SecurityContextHolder.clearContext();
         }
 

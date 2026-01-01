@@ -8,5 +8,5 @@ public enum AuditEventType {
     // Base pronta para serviços (Commit futuro: CND etc.)
     SERVICE_REQUESTED,
     SERVICE_REQUEST_SUCCESS,
-    SERVICE_REQUEST_FAILURE
+    SERVICE_REQUEST_CREATED, SERVICE_REQUEST_FAILURE
 }

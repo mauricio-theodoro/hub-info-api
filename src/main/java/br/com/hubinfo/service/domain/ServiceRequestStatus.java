@@ -1,14 +1,21 @@
 package br.com.hubinfo.service.domain;
 
 /**
- * Status do ciclo de vida da solicitação.
+ * Status de uma solicitação de serviço.
  *
- * PENDING: registrada, ainda não concluída
- * SUCCESS: concluída com sucesso (CND emitida/retornada)
- * FAILURE: concluída com falha (ex.: captcha, indisponível, bloqueio)
+ * Importante:
+ * - Mantemos um workflow simples e extensível para rastreabilidade e auditoria.
  */
 public enum ServiceRequestStatus {
-    PENDING,
+
+    RECEIVED,
+    PROCESSING,
+
+    /**
+     * Quando o serviço exige interação humana (ex.: CAPTCHA, MFA, certificado, etc.).
+     */
+    CAPTCHA_REQUIRED,
+
     SUCCESS,
-    FAILURE
+    FAILED
 }

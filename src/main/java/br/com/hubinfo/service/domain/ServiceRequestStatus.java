@@ -1,21 +1,37 @@
 package br.com.hubinfo.service.domain;
 
 /**
- * Status de uma solicitação de serviço.
+ * Status de uma solicitação de serviço (service_requests).
  *
  * Importante:
- * - Mantemos um workflow simples e extensível para rastreabilidade e auditoria.
+ * - Persistimos o status como String usando enum.name().
+ * - Isso permite evoluir adicionando novos valores sem quebrar compatibilidade.
+ *
+ * Fluxo típico:
+ * - PENDING (registrado)
+ * - CAPTCHA_REQUIRED (bloqueado por captcha/mfa)
+ * - SUCCESS (concluído)
+ * - FAILURE (falhou)
  */
 public enum ServiceRequestStatus {
 
-    RECEIVED,
-    PROCESSING,
+    /**
+     * Solicitação registrada e aguardando processamento.
+     */
+    PENDING,
 
     /**
-     * Quando o serviço exige interação humana (ex.: CAPTCHA, MFA, certificado, etc.).
+     * Solicitação não pode ser processada automaticamente porque exige CAPTCHA/MFA.
      */
     CAPTCHA_REQUIRED,
 
+    /**
+     * Solicitação concluída com sucesso.
+     */
     SUCCESS,
-    FAILED
+
+    /**
+     * Solicitação concluída com falha (erro técnico, impedimento, indisponibilidade, etc.).
+     */
+    FAILURE
 }

@@ -1,10 +1,10 @@
 package br.com.hubinfo.dte.usecase.impl;
 
 import br.com.hubinfo.audit.usecase.AuditService;
+import br.com.hubinfo.dte.usecase.RequestDteUseCase;
 import br.com.hubinfo.service.domain.ServiceRequestStatus;
 import br.com.hubinfo.service.domain.ServiceType;
 import br.com.hubinfo.service.usecase.ServiceRequestRegister;
-import br.com.hubinfo.dte.usecase.RequestDteUseCase;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -12,13 +12,15 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Implementação do caso de uso de solicitação DT-e.
+ * Implementação do caso de uso de solicitação de DT-e (caixa postal).
  *
  * Responsabilidades:
- * - Validar e registrar a request.
- * - Auditar a operação.
+ * - Registrar a solicitação no banco (service_requests).
+ * - Auditar o evento "SERVICE_REQUEST_CREATED".
  *
- * Não faz automação real ainda (por CAPTCHA/MFA etc.).
+ * Observação:
+ * - Ainda não faz automação real por conta de CAPTCHA/MFA etc.
+ * - O status inicial padrão é CAPTCHA_REQUIRED.
  */
 @Service
 public class RequestDteService implements RequestDteUseCase {
@@ -33,25 +35,37 @@ public class RequestDteService implements RequestDteUseCase {
 
     @Override
     public Result requestFederal(UUID actorUserId, String actorEmail, String cnpj) {
-        return create(actorUserId, actorEmail, cnpj, ServiceType.DTE_FEDERAL);
+        return create(actorUserId, actorEmail, cnpj, ServiceType.DTE_CAIXA_POSTAL_FEDERAL);
     }
 
     @Override
     public Result requestEstadual(UUID actorUserId, String actorEmail, String cnpj) {
-        return create(actorUserId, actorEmail, cnpj, ServiceType.DTE_ESTADUAL);
+        return create(actorUserId, actorEmail, cnpj, ServiceType.DTE_CAIXA_POSTAL_ESTADUAL);
     }
 
     private Result create(UUID actorUserId, String actorEmail, String cnpj, ServiceType type) {
         Instant now = Instant.now();
 
-        // Payload inicial padronizado (fácil de auditar e reprocessar depois).
-        Map<String, Object> payload = Map.of(
-                "cnpj", cnpj
+        // Payload mínimo padronizado para rastreabilidade (o registrador extrai o CNPJ daqui).
+        Map<String, Object> payload = Map.of("cnpj", cnpj);
+
+        UUID requestId = register.register(
+                actorUserId,
+                actorEmail,
+                type,
+                payload,
+                ServiceRequestStatus.CAPTCHA_REQUIRED,
+                now
         );
 
-        UUID requestId = register.register(actorUserId, actorEmail, type, payload, ServiceRequestStatus.CAPTCHA_REQUIRED, now);
-
-        auditService.auditServiceRequestCreated(actorUserId, actorEmail, type.name(), requestId.toString(), true);
+        // Auditoria: grava um evento indicando que a solicitação foi criada.
+        auditService.auditServiceRequestCreated(
+                actorUserId,
+                actorEmail,
+                type.name(),
+                requestId.toString(),
+                true
+        );
 
         return new Result(requestId, type, ServiceRequestStatus.CAPTCHA_REQUIRED, now);
     }

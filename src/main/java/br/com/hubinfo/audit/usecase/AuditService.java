@@ -16,16 +16,20 @@ import java.util.UUID;
 public interface AuditService {
 
     /**
-     * Registra um evento de auditoria.
+     * Auditoria quando uma solicitação de serviço é criada (CND, DT-e, etc.).
      *
-     * @param eventType  tipo do evento (enum do domínio)
-     * @param actorUserId id do usuário executor (pode ser null se não autenticado)
-     * @param actorEmail email do executor (pode ser null)
-     * @param success   resultado (true/false) - padronize conforme sua regra
-     * @param targetType tipo do alvo (ex.: "USER", "SERVICE_REQUEST")
-     * @param targetId   UUID do alvo (pode ser null dependendo do evento)
-     * @param details    dados extras (serão serializados para JSON em detailsJson)
+     * @param actorUserId ID do usuário autenticado que executou a ação
+     * @param actorEmail  E-mail do usuário autenticado
+     * @param serviceType Tipo do serviço (enum.name())
+     * @param requestId   ID da solicitação criada
+     * @param success     Se a operação foi considerada bem sucedida
      */
+    void auditServiceRequestCreated(UUID actorUserId,
+                                    String actorEmail,
+                                    String serviceType,
+                                    String requestId,
+                                    boolean success);
+    
     void record(AuditEventType eventType,
                 UUID actorUserId,
                 String actorEmail,

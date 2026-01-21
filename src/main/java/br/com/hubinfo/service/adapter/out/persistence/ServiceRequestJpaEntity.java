@@ -47,7 +47,33 @@ public class ServiceRequestJpaEntity {
     @Column(name = "result_payload_json", columnDefinition = "json")
     private String resultPayloadJson;
 
+    /**
+     * Construtor exigido pelo JPA.
+     * Mantemos protected para evitar uso indevido fora do contexto de persistência.
+     */
     protected ServiceRequestJpaEntity() {}
+
+    /**
+     * Factory para criação controlada da entidade (resolve o problema do construtor protected
+     * e mantém o padrão de criação em um ponto único).
+     */
+    public static ServiceRequestJpaEntity newRequest(UUID id,
+                                                     String serviceType,
+                                                     String status,
+                                                     String cnpj,
+                                                     UUID requestedByUserId,
+                                                     String requestedByEmail,
+                                                     Instant requestedAt) {
+        ServiceRequestJpaEntity e = new ServiceRequestJpaEntity();
+        e.id = id;
+        e.serviceType = serviceType;
+        e.status = status;
+        e.cnpj = cnpj;
+        e.requestedByUserId = requestedByUserId;
+        e.requestedByEmail = requestedByEmail;
+        e.requestedAt = requestedAt;
+        return e;
+    }
 
     // Getters/Setters (clareza)
     public UUID getId() { return id; }

@@ -55,6 +55,7 @@ public class SecurityConfig {
 
                         // admin só com ADMIN
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/captcha/**").authenticated()
 
                         .anyRequest().authenticated()
                 )

@@ -3,6 +3,7 @@ package br.com.hubinfo.service.adapter.out.persistence;
 import br.com.hubinfo.service.domain.ServiceRequestStatus;
 import br.com.hubinfo.service.domain.ServiceType;
 import br.com.hubinfo.service.usecase.ServiceRequestRegister;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -21,6 +22,11 @@ import java.util.UUID;
  *   logo só pode ser instanciada dentro do mesmo package.
  */
 @Component
+@ConditionalOnProperty(
+        prefix = "hubinfo.features",
+        name = "legacy-service-request-register-adapter",
+        havingValue = "true"
+)
 public class ServiceRequestRegisterPersistenceAdapter implements ServiceRequestRegister {
 
     private final SpringDataServiceRequestRepository repository;

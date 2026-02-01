@@ -1,4 +1,4 @@
-package br.com.hubinfo.dte.usecase;
+package br.com.hubinfo.cnpj.usecase;
 
 import br.com.hubinfo.service.domain.ServiceRequestStatus;
 import br.com.hubinfo.service.domain.ServiceType;
@@ -6,15 +6,10 @@ import br.com.hubinfo.service.domain.ServiceType;
 import java.time.Instant;
 import java.util.UUID;
 
-public interface RequestDteUseCase {
+public interface RequestCnpjDataUseCase {
 
-    Result requestFederal(UUID actorUserId, String actorEmail, String cnpj);
+    Result request(UUID actorUserId, String actorEmail, String cnpj);
 
-    Result requestEstadual(UUID actorUserId, String actorEmail, String cnpj);
-
-    /**
-     * Commit 16: inclui captchaChallengeId para o client abrir a janela do hCaptcha.
-     */
     record Result(
             UUID requestId,
             ServiceType serviceType,

@@ -3,12 +3,15 @@ package br.com.hubinfo.captcha.domain;
 /**
  * Status do desafio de CAPTCHA.
  *
- * PENDING  -> aguardando resolução humana
- * SOLVED   -> token recebido
- * EXPIRED  -> expirado/invalidado (ex.: token expirou antes do agent consumir)
+ * Regras:
+ * - PENDING: desafio criado e aguardando solução do usuário.
+ * - SOLVED: usuário enviou o token (h-captcha-response) e o sistema pode prosseguir.
+ * - EXPIRED: desafio perdeu validade (ex.: usuário demorou, sessão expirou, reprocesso necessário).
+ */
+/**
+ * Status do desafio de CAPTCHA.
  */
 public enum CaptchaChallengeStatus {
     PENDING,
-    SOLVED,
-    EXPIRED
+    SOLVED
 }

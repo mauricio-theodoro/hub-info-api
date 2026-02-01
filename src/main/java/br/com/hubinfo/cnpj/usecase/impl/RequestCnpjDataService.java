@@ -1,10 +1,10 @@
-package br.com.hubinfo.dte.usecase.impl;
+package br.com.hubinfo.cnpj.usecase.impl;
 
 import br.com.hubinfo.audit.domain.AuditEventType;
 import br.com.hubinfo.audit.usecase.AuditService;
 import br.com.hubinfo.captcha.config.HcaptchaChallengeResolver;
 import br.com.hubinfo.captcha.usecase.CaptchaChallengeService;
-import br.com.hubinfo.dte.usecase.RequestDteUseCase;
+import br.com.hubinfo.cnpj.usecase.RequestCnpjDataUseCase;
 import br.com.hubinfo.service.domain.ServiceRequestStatus;
 import br.com.hubinfo.service.domain.ServiceType;
 import br.com.hubinfo.service.usecase.ServiceRequestRegister;
@@ -15,24 +15,24 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Solicitação de serviço DT-e.
+ * Caso de uso: solicitar dados cadastrais do CNPJ (fluxo CNPJReva).
  *
  * Commit 16:
- * - quando o serviço exigir interação humana, criamos CaptchaChallenge e devolvemos captchaChallengeId
- * - o client abre uma janela com hCaptcha e depois envia o token em /api/v1/captcha/challenges/{id}/solution (ou /solve)
+ * - registra a ServiceRequest
+ * - cria CaptchaChallenge (hCaptcha) e devolve captchaChallengeId
  */
 @Service
-public class RequestDteService implements RequestDteUseCase {
+public class RequestCnpjDataService implements RequestCnpjDataUseCase {
 
     private final ServiceRequestRegister serviceRequestRegister;
     private final CaptchaChallengeService captchaChallengeService;
     private final HcaptchaChallengeResolver hcaptchaResolver;
     private final AuditService auditService;
 
-    public RequestDteService(ServiceRequestRegister serviceRequestRegister,
-                             CaptchaChallengeService captchaChallengeService,
-                             HcaptchaChallengeResolver hcaptchaResolver,
-                             AuditService auditService) {
+    public RequestCnpjDataService(ServiceRequestRegister serviceRequestRegister,
+                                  CaptchaChallengeService captchaChallengeService,
+                                  HcaptchaChallengeResolver hcaptchaResolver,
+                                  AuditService auditService) {
         this.serviceRequestRegister = serviceRequestRegister;
         this.captchaChallengeService = captchaChallengeService;
         this.hcaptchaResolver = hcaptchaResolver;
@@ -40,22 +40,13 @@ public class RequestDteService implements RequestDteUseCase {
     }
 
     @Override
-    public Result requestFederal(UUID actorUserId, String actorEmail, String cnpj) {
-        return request(ServiceType.DTE_CAIXA_POSTAL_FEDERAL, actorUserId, actorEmail, cnpj);
-    }
-
-    @Override
-    public Result requestEstadual(UUID actorUserId, String actorEmail, String cnpj) {
-        return request(ServiceType.DTE_CAIXA_POSTAL_ESTADUAL, actorUserId, actorEmail, cnpj);
-    }
-
-    private Result request(ServiceType type, UUID actorUserId, String actorEmail, String cnpj) {
-        // Normaliza CNPJ para somente dígitos (14)
+    public Result request(UUID actorUserId, String actorEmail, String cnpj) {
         String cnpjDigits = normalizeCnpj(cnpj);
 
+        ServiceType type = ServiceType.CNPJ_DADOS_CADASTRAIS;
         Instant now = Instant.now();
 
-        // 1) Registra a solicitação de serviço
+        // 1) Registra a ServiceRequest
         UUID requestId = serviceRequestRegister.register(
                 actorUserId,
                 actorEmail,
@@ -65,7 +56,7 @@ public class RequestDteService implements RequestDteUseCase {
                 now
         );
 
-        // 2) Auditoria (criação da service request)
+        // 2) Auditoria
         auditService.record(
                 AuditEventType.SERVICE_REQUEST_CREATED,
                 actorUserId,
@@ -79,23 +70,30 @@ public class RequestDteService implements RequestDteUseCase {
                 )
         );
 
-        // 3) Se houver config para hCaptcha desse serviço, cria o challenge
-        UUID captchaChallengeId = null;
-
+        // 3) Cria o CaptchaChallenge (obrigatório no CNPJReva)
         var challengeCfg = hcaptchaResolver.getOrNull(type);
-        if (challengeCfg != null) {
-            captchaChallengeId = captchaChallengeService.createForServiceRequest(
-                    actorUserId,
-                    actorEmail,
-                    type,
-                    cnpjDigits,
-                    requestId,
-                    challengeCfg.provider(),
-                    challengeCfg.siteKey(),
-                    challengeCfg.pageUrl(),
-                    challengeCfg.contextKey()
+        if (challengeCfg == null) {
+            throw new IllegalStateException("Config de hCaptcha não encontrada para: " + type);
+        }
+
+        if (isBlank(challengeCfg.siteKey()) || isBlank(challengeCfg.pageUrl())) {
+            throw new IllegalStateException(
+                    "hCaptcha configurado para " + type + ", mas siteKey/pageUrl estão vazios. " +
+                            "Verifique application.yml (hubinfo.captcha.hcaptcha.challenges)."
             );
         }
+
+        UUID captchaChallengeId = captchaChallengeService.createForServiceRequest(
+                actorUserId,
+                actorEmail,
+                type,
+                cnpjDigits,
+                requestId,
+                challengeCfg.provider(),
+                challengeCfg.siteKey(),
+                challengeCfg.pageUrl(),
+                challengeCfg.contextKey()
+        );
 
         return new Result(requestId, type, ServiceRequestStatus.CAPTCHA_REQUIRED, now, captchaChallengeId);
     }
@@ -108,5 +106,9 @@ public class RequestDteService implements RequestDteUseCase {
             throw new IllegalArgumentException("CNPJ inválido. Esperado 14 dígitos. Recebido: " + digits.length());
         }
         return digits;
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

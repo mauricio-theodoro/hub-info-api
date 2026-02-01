@@ -48,4 +48,15 @@ public interface AuditService {
                                UUID requestId,
                                boolean success,
                                Map<String, Object> details);
+
+    /**
+     * Overload de compatibilidade (LEGADO):
+     * Alguns pontos do código antigo chamam apenas com requestId (String).
+     * Mantemos para não quebrar o build; o ideal é migrar para o método completo.
+     */
+    default void auditServiceRequestCreated(String requestId) {
+        auditServiceRequestCreated(null, null, null, requestId, true);
+    }
 }
+
+

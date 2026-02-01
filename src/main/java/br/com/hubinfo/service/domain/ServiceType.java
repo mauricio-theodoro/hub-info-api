@@ -19,16 +19,22 @@ public enum ServiceType {
     // Consultas fiscais
     SITUACAO_FISCAL_FEDERAL,
     RELATORIO_SIMPLES_NACIONAL,
-    EXTRATO_SIMPLES_NACIONAL;
+    EXTRATO_SIMPLES_NACIONAL,
+
+    // === Commit 16 ===
+    // Dados cadastrais do CNPJ (CNPJReva - Receita Federal)
+    CNPJ_DADOS_CADASTRAIS;
 
     /**
      * Indica se o serviço tende a exigir desafios anti-robô (CAPTCHA) ou interação humana.
      * Uso:
      * - API pode responder com status CAPTCHA_REQUIRED de forma padronizada.
-     * - Frontend pode tratar UX (ex.: abrir fluxo assistido).
+     * - Frontend/Agent pode tratar UX (ex.: abrir fluxo assistido).
      */
     public boolean isInteractiveLikely() {
-        return this == DTE_CAIXA_POSTAL_FEDERAL || this == DTE_CAIXA_POSTAL_ESTADUAL;
+        return this == DTE_CAIXA_POSTAL_FEDERAL
+                || this == DTE_CAIXA_POSTAL_ESTADUAL
+                || this == CNPJ_DADOS_CADASTRAIS;
     }
 
     /**

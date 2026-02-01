@@ -12,12 +12,14 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Caso de uso: registrar solicitações de serviços.
+ * Implementação do caso de uso de registro de solicitações de serviço.
  *
- * Nota:
- * - O schema atual exige CNPJ (NOT NULL).
- * - Ainda não temos "request_payload_json" no banco para guardar payload genérico.
- * - Portanto extraímos CNPJ do payload e persistimos campos base.
+ * Observação de arquitetura (pragmática para o momento):
+ * - Este serviço escreve diretamente via Spring Data JPA para persistir a request.
+ * - A tabela atual exige cnpj (NOT NULL), então o registrador extrai isso do payload.
+ *
+ * Futuro (quando você criar request_payload_json ou separar melhor camadas):
+ * - Este UseCase pode depender apenas de um Port e um Adapter persistir.
  */
 @Service
 public class ServiceRequestRegisterService implements ServiceRequestRegister {
@@ -36,13 +38,12 @@ public class ServiceRequestRegisterService implements ServiceRequestRegister {
                          ServiceRequestStatus status,
                          Instant requestedAt) {
 
-        // 1) CNPJ obrigatório pelo schema atual.
+        // 1) Pelo schema atual, CNPJ é obrigatório.
         String cnpj = extractAndNormalizeCnpj(payload);
 
-        // 2) Criação da entidade via factory (evita o problema do construtor protected).
-        UUID requestId = UUID.randomUUID();
+        // 2) Cria a entidade JPA usando factory interna (evita problema com construtor protected).
         ServiceRequestJpaEntity entity = ServiceRequestJpaEntity.newRequest(
-                requestId,
+                UUID.randomUUID(),
                 type.name(),
                 status.name(),
                 cnpj,
@@ -51,25 +52,33 @@ public class ServiceRequestRegisterService implements ServiceRequestRegister {
                 requestedAt
         );
 
-        repository.save(entity);
-        return requestId;
+        // 3) Persiste e retorna o id.
+        return repository.save(entity).getId();
     }
 
     /**
-     * Extrai e normaliza CNPJ (14 dígitos).
+     * Extrai e normaliza CNPJ para exatamente 14 dígitos.
+     *
+     * Regras:
+     * - Campo "cnpj" precisa existir no payload.
+     * - Remove máscara e qualquer caractere não numérico.
+     * - Valida tamanho final (14).
      */
     private static String extractAndNormalizeCnpj(Map<String, Object> payload) {
         if (payload == null) {
             throw new IllegalArgumentException("Payload inválido: não pode ser nulo.");
         }
+
         Object raw = payload.get("cnpj");
         if (raw == null) {
             throw new IllegalArgumentException("Payload inválido: campo 'cnpj' é obrigatório.");
         }
+
         String digits = raw.toString().replaceAll("\\D", "");
         if (digits.length() != 14) {
             throw new IllegalArgumentException("CNPJ inválido: deve conter 14 dígitos.");
         }
+
         return digits;
     }
 }

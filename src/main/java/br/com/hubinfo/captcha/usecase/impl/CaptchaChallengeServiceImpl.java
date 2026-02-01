@@ -35,6 +35,8 @@ public class CaptchaChallengeServiceImpl implements CaptchaChallengeService {
 
     @Override
     public CaptchaChallengeView get(UUID id) {
+        if (id == null) throw new IllegalArgumentException("id é obrigatório.");
+
         var view = repository.findById(id).orElseThrow(() ->
                 new IllegalArgumentException("CaptchaChallenge não encontrado: " + id)
         );
@@ -66,18 +68,17 @@ public class CaptchaChallengeServiceImpl implements CaptchaChallengeService {
 
         // Validações explícitas para evitar lixo no banco.
         if (actorUserId == null) throw new IllegalArgumentException("actorUserId é obrigatório.");
-        if (actorEmail == null || actorEmail.isBlank()) throw new IllegalArgumentException("actorEmail é obrigatório.");
+        if (isBlank(actorEmail)) throw new IllegalArgumentException("actorEmail é obrigatório.");
         if (serviceType == null) throw new IllegalArgumentException("serviceType é obrigatório.");
-        if (cnpj == null || cnpj.isBlank()) throw new IllegalArgumentException("cnpj é obrigatório.");
+        if (isBlank(cnpj)) throw new IllegalArgumentException("cnpj é obrigatório.");
         if (serviceRequestId == null) throw new IllegalArgumentException("serviceRequestId é obrigatório.");
-        if (provider == null || provider.isBlank()) throw new IllegalArgumentException("provider é obrigatório.");
-        if (siteKey == null || siteKey.isBlank()) throw new IllegalArgumentException("siteKey é obrigatório.");
-        if (pageUrl == null || pageUrl.isBlank()) throw new IllegalArgumentException("pageUrl é obrigatório.");
-        if (contextKey == null || contextKey.isBlank()) throw new IllegalArgumentException("contextKey é obrigatório.");
+        if (isBlank(provider)) throw new IllegalArgumentException("provider é obrigatório.");
+        if (isBlank(siteKey)) throw new IllegalArgumentException("siteKey é obrigatório.");
+        if (isBlank(pageUrl)) throw new IllegalArgumentException("pageUrl é obrigatório.");
+        if (isBlank(contextKey)) throw new IllegalArgumentException("contextKey é obrigatório.");
 
         Instant now = Instant.now();
 
-        // O Port.create(...) exige 10 parâmetros, incluindo serviceRequestId e cnpj, e retorna UUID.
         UUID challengeId = repository.create(
                 serviceRequestId,
                 cnpj,
@@ -91,7 +92,6 @@ public class CaptchaChallengeServiceImpl implements CaptchaChallengeService {
                 now
         );
 
-        // Auditoria de criação (mínima, mas rastreável).
         auditService.record(
                 AuditEventType.CAPTCHA_CHALLENGE_CREATED,
                 actorUserId,
@@ -104,7 +104,8 @@ public class CaptchaChallengeServiceImpl implements CaptchaChallengeService {
                         "serviceRequestId", serviceRequestId.toString(),
                         "cnpj", cnpj,
                         "provider", provider,
-                        "contextKey", contextKey
+                        "contextKey", contextKey,
+                        "pageUrl", pageUrl
                 )
         );
 
@@ -119,12 +120,29 @@ public class CaptchaChallengeServiceImpl implements CaptchaChallengeService {
 
         if (challengeId == null) throw new IllegalArgumentException("challengeId é obrigatório.");
         if (solvedByUserId == null) throw new IllegalArgumentException("solvedByUserId é obrigatório.");
-        if (solvedByEmail == null || solvedByEmail.isBlank()) throw new IllegalArgumentException("solvedByEmail é obrigatório.");
-        if (solutionToken == null || solutionToken.isBlank()) {
-            throw new IllegalArgumentException("Token do CAPTCHA é obrigatório.");
+        if (isBlank(solvedByEmail)) throw new IllegalArgumentException("solvedByEmail é obrigatório.");
+        if (isBlank(solutionToken)) throw new IllegalArgumentException("Token do CAPTCHA é obrigatório.");
+
+        // 1) Garante que existe e pega dados reais pra auditar corretamente.
+        var existing = repository.findById(challengeId).orElseThrow(() ->
+                new IllegalArgumentException("CaptchaChallenge não encontrado: " + challengeId)
+        );
+
+        // 2) Idempotência: se já estiver resolvido, não sobrescreve token/solvedAt.
+        if (existing.status() == CaptchaChallengeStatus.SOLVED) {
+            return;
         }
 
-        repository.markSolved(challengeId, solutionToken, Instant.now());
+        // 3) Se estiver num status inesperado, melhor falhar explicitamente.
+        // (Ajuste se você tiver outros status além de PENDING/SOLVED)
+        if (existing.status() != CaptchaChallengeStatus.PENDING) {
+            throw new IllegalStateException(
+                    "Não é possível submeter solução. Status atual: " + existing.status()
+            );
+        }
+
+        Instant solvedAt = Instant.now();
+        repository.markSolved(challengeId, solutionToken, solvedAt);
 
         auditService.record(
                 AuditEventType.CAPTCHA_CHALLENGE_SOLVED,
@@ -133,7 +151,15 @@ public class CaptchaChallengeServiceImpl implements CaptchaChallengeService {
                 true,
                 "CAPTCHA_CHALLENGE",
                 challengeId,
-                Map.of("provider", "HCAPTCHA")
+                Map.of(
+                        "provider", existing.provider(),
+                        "contextKey", existing.contextKey(),
+                        "serviceRequestId", existing.serviceRequestId().toString()
+                )
         );
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

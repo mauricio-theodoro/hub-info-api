@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>HUB Info - hCaptcha Test Tool</title>
+
+    <!-- hCaptcha script -->
+    <script src="https://js.hcaptcha.com/1/api.js?render=explicit" async defer></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; background: #0b1020; color: #e8eefc; }
+        h1 { margin: 0 0 12px; font-size: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .card { background: #121a33; border: 1px solid #23305a; border-radius: 10px; padding: 16px; }
+        label { display: block; font-size: 12px; opacity: .85; margin-bottom: 6px; }
+        input, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #2a3b70; background: #0d1430; color: #e8eefc; }
+        textarea { min-height: 90px; resize: vertical; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        button { padding: 10px 12px; border-radius: 8px; border: 1px solid #2a3b70; background: #1a2a56; color: #fff; cursor: pointer; }
+        button:hover { background: #22366f; }
+        button:disabled { opacity: .6; cursor: not-allowed; }
+        .muted { font-size: 12px; opacity: .8; }
+        .ok { color: #7CFC98; }
+        .warn { color: #FFD27C; }
+        .err { color: #FF8A8A; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        .spacer { height: 10px; }
+        .small { font-size: 12px; }
+        .footer { margin-top: 16px; opacity: .75; font-size: 12px; }
+    </style>
+</head>
+
+<body>
+<h1>HUB Info • Ferramenta de teste do hCaptcha (dev)</h1>
+<p class="muted">
+    Objetivo: carregar um captchaChallenge do backend, renderizar o hCaptcha, capturar o <b>solutionToken</b> e enviar para
+    <span class="mono">POST /api/v1/captcha/challenges/{id}/solution</span>.
+</p>
+
+<div class="grid">
+    <div class="card">
+        <h2 style="margin-top:0;font-size:16px;">1) Configuração</h2>
+
+        <label>Base URL do backend (normalmente http://localhost:8080)</label>
+        <input id="baseUrl" value="" placeholder="http://localhost:8080" />
+
+        <div class="spacer"></div>
+
+        <label>JWT (Bearer token) - cole o access token do login</label>
+        <textarea id="jwt" placeholder="Cole aqui o JWT. Ex: eyJhbGciOiJIUzI1NiIsInR5cCI..."></textarea>
+        <div class="small muted">⚠️ Não coloque JWT em URL. Cole aqui.</div>
+
+        <div class="spacer"></div>
+
+        <label>captchaChallengeId</label>
+        <input id="challengeId" placeholder="UUID do challenge (ex: 8c8be921-b850-...)" />
+
+        <div class="spacer"></div>
+
+        <div class="row">
+            <button id="btnLoad">Carregar challenge do backend</button>
+            <button id="btnClear">Limpar</button>
+        </div>
+
+        <div class="spacer"></div>
+        <div id="loadStatus" class="muted"></div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0;font-size:16px;">2) Render / Token</h2>
+
+        <div class="row">
+            <div>
+                <label>siteKey</label>
+                <input id="siteKey" placeholder="Será preenchido ao carregar o challenge" />
+            </div>
+            <div>
+                <label>pageUrl (referência)</label>
+                <input id="pageUrl" placeholder="Será preenchido ao carregar o challenge" />
+            </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="row">
+            <button id="btnRender" disabled>Renderizar hCaptcha</button>
+            <button id="btnReset" disabled>Resetar widget</button>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div id="captchaBox" style="padding:12px;border:1px dashed #2a3b70;border-radius:10px;min-height:90px;">
+            <div class="muted">O widget aparecerá aqui.</div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <label>solutionToken (gerado ao resolver)</label>
+        <textarea id="solutionToken" placeholder="Aqui vai aparecer o token do hCaptcha" readonly></textarea>
+
+        <div class="spacer"></div>
+
+        <button id="btnSend" disabled>Enviar solutionToken para o backend</button>
+
+        <div class="spacer"></div>
+        <div id="sendStatus" class="muted"></div>
+
+        <div class="footer">
+            <div class="warn">
+                Se o widget não renderizar com o siteKey da Receita, isso é esperado em localhost (restrição de domínio).
+                Use um siteKey de DEV liberado para localhost só para validar o fluxo.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const $ = (id) => document.getElementById(id);
+
+    let widgetId = null;
+    let lastToken = null;
+
+    function resolveBaseUrl() {
+      const v = $("baseUrl").value.trim();
+      return v || window.location.origin; // se você abrir em localhost:8080, funciona sem setar.
+    }
+
+    function authHeader() {
+      const jwt = $("jwt").value.trim();
+      if (!jwt) return null;
+      return "Bearer " + jwt;
+    }
+
+    function setLoadStatus(text, cls="muted") {
+      $("loadStatus").className = cls;
+      $("loadStatus").textContent = text;
+    }
+
+    function setSendStatus(text, cls="muted") {
+      $("sendStatus").className = cls;
+      $("sendStatus").textContent = text;
+    }
+
+    function enableRender(enable) {
+      $("btnRender").disabled = !enable;
+      $("btnReset").disabled = !enable;
+    }
+
+    function enableSend(enable) {
+      $("btnSend").disabled = !enable;
+    }
+
+    $("btnClear").onclick = () => {
+      $("jwt").value = "";
+      $("challengeId").value = "";
+      $("siteKey").value = "";
+      $("pageUrl").value = "";
+      $("solutionToken").value = "";
+      lastToken = null;
+      setLoadStatus("");
+      setSendStatus("");
+      resetWidget(true);
+      enableRender(false);
+      enableSend(false);
+    };
+
+    $("btnLoad").onclick = async () => {
+      try {
+        setLoadStatus("Carregando challenge...", "muted");
+
+        const baseUrl = resolveBaseUrl();
+        const challengeId = $("challengeId").value.trim();
+        const auth = authHeader();
+
+        if (!challengeId) {
+          setLoadStatus("Informe o captchaChallengeId.", "err");
+          return;
+        }
+        if (!auth) {
+          setLoadStatus("Cole o JWT (Bearer token) do login para chamar o GET do challenge.", "err");
+          return;
+        }
+
+        const res = await fetch(`${baseUrl}/api/v1/captcha/challenges/${challengeId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": auth,
+            "Accept": "application/json"
+          }
+        });
+
+        const text = await res.text();
+        if (!res.ok) {
+          setLoadStatus(`Erro ao carregar: HTTP ${res.status} • ${text}`, "err");
+          return;
+        }
+
+        const data = JSON.parse(text);
+
+        $("siteKey").value = data.siteKey || "";
+        $("pageUrl").value = data.pageUrl || "";
+
+        if (!$("siteKey").value) {
+          setLoadStatus("Challenge carregado, mas siteKey veio vazio. Verifique config no backend.", "warn");
+          enableRender(false);
+          return;
+        }
+
+        setLoadStatus("Challenge carregado. Agora renderize o hCaptcha.", "ok");
+        enableRender(true);
+        enableSend(false);
+
+      } catch (e) {
+        setLoadStatus("Falha inesperada ao carregar challenge: " + e.message, "err");
+      }
+    };
+
+    $("btnRender").onclick = async () => {
+      const siteKey = $("siteKey").value.trim();
+      if (!siteKey) {
+        setLoadStatus("siteKey vazio — carregue o challenge primeiro.", "err");
+        return;
+      }
+
+      // Espera o hcaptcha carregar (script é async)
+      if (!window.hcaptcha) {
+        setLoadStatus("Aguardando o script do hCaptcha carregar... tente novamente em 2-3 segundos.", "warn");
+        return;
+      }
+
+      resetWidget(true);
+
+      $("captchaBox").innerHTML = `<div id="hcaptchaWidget"></div>`;
+      lastToken = null;
+      $("solutionToken").value = "";
+      enableSend(false);
+
+      try {
+        widgetId = window.hcaptcha.render("hcaptchaWidget", {
+          sitekey: siteKey,
+          callback: (token) => {
+            lastToken = token;
+            $("solutionToken").value = token;
+            setSendStatus("Token capturado. Agora envie para o backend.", "ok");
+            enableSend(true);
+          },
+          "error-callback": () => {
+            setSendStatus("Erro ao resolver o hCaptcha (error-callback).", "err");
+          },
+          "expired-callback": () => {
+            setSendStatus("Token expirou. Resolva novamente.", "warn");
+            enableSend(false);
+          }
+        });
+
+        setSendStatus("Widget renderizado. Resolva o captcha para gerar o token.", "muted");
+
+      } catch (e) {
+        setSendStatus("Falha ao renderizar widget: " + e.message, "err");
+      }
+    };
+
+    function resetWidget(hard=false) {
+      try {
+        if (window.hcaptcha && widgetId !== null) {
+          window.hcaptcha.reset(widgetId);
+        }
+      } catch (_) {}
+      if (hard) {
+        widgetId = null;
+        $("captchaBox").innerHTML = `<div class="muted">O widget aparecerá aqui.</div>`;
+      }
+    }
+
+    $("btnReset").onclick = () => {
+      resetWidget(false);
+      lastToken = null;
+      $("solutionToken").value = "";
+      enableSend(false);
+      setSendStatus("Widget resetado. Resolva novamente para gerar um novo token.", "muted");
+    };
+
+    $("btnSend").onclick = async () => {
+      try {
+        const baseUrl = resolveBaseUrl();
+        const challengeId = $("challengeId").value.trim();
+        const auth = authHeader();
+
+        if (!challengeId) {
+          setSendStatus("Informe o captchaChallengeId.", "err");
+          return;
+        }
+        if (!auth) {
+          setSendStatus("Cole o JWT (Bearer token).", "err");
+          return;
+        }
+        if (!lastToken) {
+          setSendStatus("Ainda não há solutionToken. Resolva o captcha primeiro.", "err");
+          return;
+        }
+
+        setSendStatus("Enviando solutionToken para o backend...", "muted");
+
+        const res = await fetch(`${baseUrl}/api/v1/captcha/challenges/${challengeId}/solution`, {
+          method: "POST",
+          headers: {
+            "Authorization": auth,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ solutionToken: lastToken })
+        });
+
+        const text = await res.text();
+
+        if (res.status === 204) {
+          setSendStatus("OK! Backend aceitou o token (HTTP 204). Agora confirme no GET do challenge que solvedAt/status atualizaram.", "ok");
+          return;
+        }
+
+        setSendStatus(`Resposta do backend: HTTP ${res.status} • ${text}`, res.ok ? "warn" : "err");
+
+      } catch (e) {
+        setSendStatus("Falha inesperada ao enviar token: " + e.message, "err");
+      }
+    };
+
+    // Preenche baseUrl com origin automaticamente, se vazio
+    window.addEventListener("load", () => {
+      $("baseUrl").value = window.location.origin;
+    });
+</script>
+</body>
+</html>

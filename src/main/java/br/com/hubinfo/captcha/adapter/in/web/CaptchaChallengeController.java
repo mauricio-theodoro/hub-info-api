@@ -2,9 +2,13 @@ package br.com.hubinfo.captcha.adapter.in.web;
 
 import br.com.hubinfo.captcha.usecase.CaptchaChallengeService;
 import br.com.hubinfo.security.HubInfoPrincipal;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -28,7 +32,12 @@ public class CaptchaChallengeController {
     }
 
     @GetMapping("/{id}")
-    public CaptchaChallengeService.CaptchaChallengeView get(@PathVariable UUID id) {
+    public CaptchaChallengeService.CaptchaChallengeView get(@PathVariable UUID id,
+                                                            @AuthenticationPrincipal HubInfoPrincipal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado.");
+        }
+        // (MVP) Retorna o challenge. (Se quiser segurança extra, valide ownership via ServiceRequest.)
         return captchaChallengeService.get(id);
     }
 
@@ -38,6 +47,9 @@ public class CaptchaChallengeController {
      * Importante:
      * - Em produção, o Agent deve criar isso quando DETECTAR o hCaptcha no site alvo.
      */
+
+
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CreateCaptchaChallengeResponse create(@RequestBody CreateCaptchaChallengeRequest body,
@@ -61,8 +73,12 @@ public class CaptchaChallengeController {
     @PostMapping("/{id}/solution")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void submitSolution(@PathVariable UUID id,
-                               @RequestBody SubmitCaptchaSolutionRequest body,
+                               @Valid @RequestBody CaptchaSolutionBody body,
                                @AuthenticationPrincipal HubInfoPrincipal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado.");
+        }
+
         captchaChallengeService.submitSolution(
                 id,
                 principal.userId(),
@@ -70,8 +86,12 @@ public class CaptchaChallengeController {
                 body.solutionToken()
         );
     }
+    public record CaptchaSolutionBody(
+            @JsonAlias({"solutionToken", "token", "hcaptchaToken"})
+            @NotBlank(message = "Token do CAPTCHA é obrigatório.")
+            String solutionToken
+    ) {}
 
-    public record SubmitCaptchaSolutionRequest(String solutionToken) {}
 
     public record CreateCaptchaChallengeRequest(
             br.com.hubinfo.service.domain.ServiceType serviceType,

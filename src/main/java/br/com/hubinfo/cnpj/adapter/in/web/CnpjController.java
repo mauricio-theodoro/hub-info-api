@@ -1,3 +1,4 @@
+
 package br.com.hubinfo.cnpj.adapter.in.web;
 
 import br.com.hubinfo.cnpj.adapter.in.web.dto.CnpjRequestBody;
@@ -5,7 +6,9 @@ import br.com.hubinfo.cnpj.usecase.RequestCnpjDataUseCase;
 import br.com.hubinfo.security.HubInfoPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * API: Solicitação de dados cadastrais do CNPJ (CNPJReva).
@@ -22,8 +25,13 @@ public class CnpjController {
 
     @PostMapping("/requests")
     @ResponseStatus(HttpStatus.CREATED)
-    public RequestCnpjDataUseCase.Result request(@Valid @RequestBody CnpjRequestBody body,
-                                                 HubInfoPrincipal principal) {
+    public RequestCnpjDataUseCase.Result request(
+            @Valid @RequestBody CnpjRequestBody body,
+            @AuthenticationPrincipal HubInfoPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado.");
+        }
 
         return requestCnpjDataUseCase.request(
                 principal.userId(),

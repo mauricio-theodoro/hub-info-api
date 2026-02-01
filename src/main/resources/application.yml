@@ -57,7 +57,6 @@ hubinfo:
         CNPJ_DADOS_CADASTRAIS:
           pageUrl: "https://solucoes.receita.fazenda.gov.br/Servicos/cnpjreva/cnpjreva_Solicitacao.asp"
           siteKey: "${HUBINFO_HCAPTCHA_CNPJREVA_SITEKEY:}"
-          # Se quiser já preparar o DT-e (você preenche depois os siteKeys reais):
         DTE_CAIXA_POSTAL_FEDERAL:
           pageUrl: ""
           siteKey: ""
